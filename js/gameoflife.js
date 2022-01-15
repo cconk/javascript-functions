@@ -1,39 +1,95 @@
 function seed(a,b,c) {
-  let agruments = [];
-  agruments.push(a,b,c);
-  console.log(agruments);
-  return agruments;
+  let args = Array.prototype.slice.call(arguments)
+  return args;
 
 }
 
-function same([x, y], [j, k]) {
-  if([x,y]===[j,k]) {
-    return true;
-  } else {
-    return false;
-  }
+function same(a,b) {
+  return Array.isArray(a) &&
+    Array.isArray(b) &&
+    a.length === b.length &&
+    a.every((val, index) => val === b[index]);
 }
 
 // The game state to search for `cell` is passed as the `this` value of the function.
-function contains(cell) {}
+function contains(cell) {
+  return this.some(c => same(c, cell));
+}
 
-const printCell = (cell, state) => {};
+const printCell = (cell, state) => {
+  return contains.call(state, cell) ? "\u25A3" : "\u25A2";
+};
 
-const corners = (state = []) => {};
+const corners = (state = []) => {
+  if (state.length === 0) {
+    return {
+      topRight: [0, 0],
+      bottomLeft: [0, 0]
+    };
+  }
+  const xs = state.map(([x, _]) => x);
+  const ys = state.map(([_, y]) => y);
+  return {
+    topRight: [Math.max(...xs), Math.max(...ys)],
+    bottomLeft: [Math.min(...xs), Math.min(...ys)]
+  };  
+};
 
-const printCells = (state) => {};
+const printCells = state => {
+  const { bottomLeft, topRight } = corners(state);
+  let accumulator = "";
+  for (let y = topRight[1]; y >= bottomLeft[1]; y--) {
+    let row = [];
+    for (let x = bottomLeft[0]; x <= topRight[0]; x++) {
+      row.push(printCell([x, y], state));
+    }
+    accumulator += row.join(" ") + "\n";
+  }
+  return accumulator;
+};
 
-const getNeighborsOf = ([x, y]) => {};
+const getNeighborsOf = ([x, y]) => [
+  [x-1, y+1], [x, y+1], [x+1, y+1],
+  [x-1, y],             [x+1, y],
+  [x-1, y-1], [x, y-1], [x+1, y-1]
+];
 
-const getLivingNeighbors = (cell, state) => {};
+const getLivingNeighbors = (cell, state) => {
+  return getNeighborsOf(cell).filter(n => contains.bind(state)(n));
+};
 
-const willBeAlive = (cell, state) => {};
+const willBeAlive = (cell, state) => {
+  const livingNeighbors = getLivingNeighbors(cell, state);
 
-const calculateNext = (state) => {};
+  return (
+    livingNeighbors.length === 3 ||
+    (contains.call(state, cell) && livingNeighbors.length === 2)
+  );
+};
 
-const iterate = (state, iterations) => {};
+const calculateNext = (state) => {
+  const { bottomLeft, topRight } = corners(state);
+  let result = [];
+  for (let y = topRight[1] + 1; y >= bottomLeft[1] - 1; y--) {
+    for (let x = bottomLeft[0] - 1; x <= topRight[0] + 1; x++) {
+      result = result.concat(willBeAlive([x, y], state) ? [[x, y]] : []);
+    }
+  }
+  return result;
+};
 
-const main = (pattern, iterations) => {};
+const iterate = (state, iterations) => {
+  const states = [state];
+    for(let i = 0; i < iterations; i++) {
+        states.push(calculateNext(states[states.length-1]));
+    }
+    return states;
+};
+
+const main = (pattern, iterations) => {
+  const results = iterate(startPatterns[pattern], iterations);
+  results.forEach(r => console.log(printCells(r)));
+};
 
 const startPatterns = {
     rpentomino: [
@@ -72,7 +128,7 @@ const startPatterns = {
       console.log("Usage: node js/gameoflife.js rpentomino 50");
     }
   }
-  
+
   exports.seed = seed;
   exports.same = same;
   exports.contains = contains;
